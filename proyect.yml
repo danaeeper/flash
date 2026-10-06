@@ -1,0 +1,23 @@
+name: FlashBox
+
+options:
+  bundleIdPrefix: com.catita
+
+settings:
+  base:
+    SWIFT_VERSION: 5.9
+
+targets:
+  FlashBox:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - FlashBox
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.catita.flashbox
+        INFOPLIST_KEY_CFBundleDisplayName: FlashBox
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.games
+    resources:
+      - FlashBox/Resources
