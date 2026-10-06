@@ -250,7 +250,7 @@ jobs:
 
 
       # ==========================================
-      # 10. CREAR CERTIFICADO DE PRUEBA
+      # 10. CREAR CERTIFICADO DE PRUEBA AIR
       # ==========================================
 
       - name: Crear certificado de prueba AIR
@@ -327,3 +327,86 @@ jobs:
         with:
           name: Auronn-Play-Saw-Trap-AIRI
           path: AuronnPlay.airi
+
+
+      # ==========================================
+      # 14. PRUEBA IPA SIN MOBILEPROVISION
+      # ==========================================
+
+      - name: Intentar generar IPA sin MobileProvision
+        continue-on-error: true
+        run: |
+          set +e
+
+          echo "======================================"
+          echo "PRUEBA DE IPA SIN MOBILEPROVISION"
+          echo "======================================"
+
+          echo ""
+          echo "Intentando convertir AIRI -> IPA..."
+          echo ""
+
+          adt \
+            -package \
+            -target ipa-test \
+            -storetype pkcs12 \
+            -keystore auronn-test.p12 \
+            -storepass auronnpassword \
+            AuronnPlay-test.ipa \
+            AuronnPlay.airi \
+            2>&1 | tee ipa-build.log
+
+          ADT_EXIT=${PIPESTATUS[0]}
+
+          echo ""
+          echo "======================================"
+          echo "RESULTADO ADT"
+          echo "======================================"
+
+          echo "Código de salida: $ADT_EXIT"
+
+          if [ -f AuronnPlay-test.ipa ]; then
+
+            echo ""
+            echo "======================================"
+            echo "🎉 ¡SE GENERÓ UN IPA!"
+            echo "======================================"
+
+            ls -lh AuronnPlay-test.ipa
+
+          else
+
+            echo ""
+            echo "======================================"
+            echo "❌ NO SE GENERÓ EL IPA"
+            echo "======================================"
+
+            echo ""
+            echo "ADT terminó sin crear el archivo IPA."
+            echo ""
+            echo "El registro completo está en:"
+            echo "ipa-build.log"
+
+          fi
+
+          echo ""
+          echo "======================================"
+          echo "FIN DE LA PRUEBA"
+          echo "======================================"
+
+          exit 0
+
+
+      # ==========================================
+      # 15. GUARDAR RESULTADOS DE LA PRUEBA
+      # ==========================================
+
+      - name: Guardar resultado de prueba
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Resultado-IPA-Sin-MobileProvision
+          path: |
+            ipa-build.log
+            AuronnPlay-test.ipa
+          if-no-files-found: ignore
