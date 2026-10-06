@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-15
 
     steps:
       - name: Descargar proyecto
@@ -22,48 +22,43 @@ jobs:
 
       - name: Descargar AIR SDK Manager
         run: |
-          curl -L \
-            "https://github.com/airsdk/airsdkmanager-releases/releases/latest/download/AIRSDKManager-macOS.zip" \
-            -o airsdkmanager.zip
-
-          unzip -q airsdkmanager.zip -d airsdkmanager
+          git clone --depth 1 \
+            https://github.com/airsdk/airsdkmanager.git \
+            airsdkmanager
 
           echo "=== AIR SDK Manager ==="
-          find airsdkmanager -maxdepth 3 -type f | head -30
+          ls -la airsdkmanager
 
-      - name: Descargar AIR SDK
+      - name: Instalar AIR SDK
         run: |
-          mkdir -p "$HOME/air"
+          echo "Instalando AIR SDK..."
 
-          curl -L \
-            "https://airsdk.harman.com/api/air-sdk/51.4.1.1/AIRSDK_MacOS.zip" \
-            -o "$HOME/air/AIRSDK_MacOS.zip"
+          mkdir -p "$HOME/.airsdk"
 
-          unzip -q "$HOME/air/AIRSDK_MacOS.zip" -d "$HOME/air/sdk"
+          cd airsdkmanager
 
-          echo "=== AIR SDK ==="
-          find "$HOME/air/sdk" -type f -name adt -print
+          chmod +x gradlew
 
-      - name: Configurar AIR
+          ./gradlew build
+
+          echo "=== AIR SDK Manager compilado ==="
+          find . -maxdepth 4 -type f | head -50
+
+      - name: Buscar AIR SDK
         run: |
-          ADT_PATH=$(find "$HOME/air/sdk" -type f -name adt -print -quit)
-          AIR_HOME=$(dirname "$(dirname "$ADT_PATH")")
+          echo "Buscando ADT..."
 
-          echo "AIR_HOME=$AIR_HOME" >> "$GITHUB_ENV"
-          echo "$AIR_HOME/bin" >> "$GITHUB_PATH"
+          find "$HOME" -type f -name adt 2>/dev/null | head -20 || true
 
-          chmod +x "$AIR_HOME/bin/adt"
+          find "$GITHUB_WORKSPACE" -type f -name adt 2>/dev/null | head -20 || true
 
-          echo "=== AIR VERSION ==="
-          adt -version
-
-      - name: Descargar juego
+      - name: Descargar SWF del juego
         run: |
           curl -L \
             "https://github.com/danaeeper/flash/releases/download/game-assets/auron_play_jig_trap.swf" \
             -o auron_play_jig_trap.swf
 
-          echo "=== SWF ==="
+          echo "=== SWF descargado ==="
           ls -lh auron_play_jig_trap.swf
 
       - name: Crear application.xml
@@ -79,6 +74,8 @@ jobs:
               <filename>Auronn Play Saw Trap</filename>
 
               <name>Auronn Play Saw Trap</name>
+
+              <description>Auronn Play Saw Trap</description>
 
               <initialWindow>
 
@@ -101,6 +98,7 @@ jobs:
               </supportedProfiles>
 
               <iPhone>
+
                   <InfoAdditions><![CDATA[
                       <key>UIRequiresFullScreen</key>
                       <true/>
@@ -111,6 +109,7 @@ jobs:
                           <string>UIInterfaceOrientationLandscapeRight</string>
                       </array>
                   ]]></InfoAdditions>
+
               </iPhone>
 
           </application>
@@ -119,20 +118,62 @@ jobs:
           echo "=== application.xml ==="
           cat application.xml
 
-      - name: Verificar proyecto
+      - name: Verificar archivos
         run: |
-          echo "=== ARCHIVOS ==="
+          echo "=============================="
+          echo "ARCHIVOS DEL PROYECTO"
+          echo "=============================="
+
           ls -lh
 
-          echo "=== SWF ==="
+          echo ""
+          echo "=============================="
+          echo "SWF"
+          echo "=============================="
+
           file auron_play_jig_trap.swf
 
-          echo "=== XML ==="
+          echo ""
+          echo "=============================="
+          echo "APPLICATION XML"
+          echo "=============================="
+
           xmllint --noout application.xml
+
+      - name: Buscar ADT
+        id: find_adt
+        run: |
+          echo "Buscando herramienta ADT..."
+
+          ADT=$(find "$HOME" "$GITHUB_WORKSPACE" \
+            -type f \
+            -name adt \
+            -print \
+            2>/dev/null | head -1)
+
+          if [ -z "$ADT" ]; then
+            echo "ERROR: No se encontró ADT."
+            exit 1
+          fi
+
+          echo "ADT encontrado:"
+          echo "$ADT"
+
+          chmod +x "$ADT"
+
+          echo "ADT_PATH=$ADT" >> "$GITHUB_ENV"
+
+      - name: Mostrar versión AIR
+        run: |
+          echo "=== AIR / ADT ==="
+
+          "$ADT_PATH" -version
 
       - name: Crear IPA de prueba
         run: |
-          adt \
+          echo "=== CREANDO IPA ==="
+
+          "$ADT_PATH" \
             -package \
             -target ipa-test \
             AuronnPlay.ipa \
@@ -141,11 +182,18 @@ jobs:
 
       - name: Verificar IPA
         run: |
-          echo "=== IPA CREADA ==="
+          echo "=============================="
+          echo "IPA GENERADA"
+          echo "=============================="
+
           ls -lh AuronnPlay.ipa
 
-          echo "=== CONTENIDO ==="
-          unzip -l AuronnPlay.ipa | head -50
+          echo ""
+          echo "=============================="
+          echo "CONTENIDO IPA"
+          echo "=============================="
+
+          unzip -l AuronnPlay.ipa | head -60
 
       - name: Guardar IPA
         uses: actions/upload-artifact@v4
