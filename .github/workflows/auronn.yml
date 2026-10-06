@@ -1,0 +1,154 @@
+name: Build Auronn Play Saw Trap
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Instalar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Descargar AIR SDK Manager
+        run: |
+          curl -L \
+            "https://github.com/airsdk/airsdkmanager-releases/releases/latest/download/AIRSDKManager-macOS.zip" \
+            -o airsdkmanager.zip
+
+          unzip -q airsdkmanager.zip -d airsdkmanager
+
+          echo "=== AIR SDK Manager ==="
+          find airsdkmanager -maxdepth 3 -type f | head -30
+
+      - name: Descargar AIR SDK
+        run: |
+          mkdir -p "$HOME/air"
+
+          curl -L \
+            "https://airsdk.harman.com/api/air-sdk/51.4.1.1/AIRSDK_MacOS.zip" \
+            -o "$HOME/air/AIRSDK_MacOS.zip"
+
+          unzip -q "$HOME/air/AIRSDK_MacOS.zip" -d "$HOME/air/sdk"
+
+          echo "=== AIR SDK ==="
+          find "$HOME/air/sdk" -type f -name adt -print
+
+      - name: Configurar AIR
+        run: |
+          ADT_PATH=$(find "$HOME/air/sdk" -type f -name adt -print -quit)
+          AIR_HOME=$(dirname "$(dirname "$ADT_PATH")")
+
+          echo "AIR_HOME=$AIR_HOME" >> "$GITHUB_ENV"
+          echo "$AIR_HOME/bin" >> "$GITHUB_PATH"
+
+          chmod +x "$AIR_HOME/bin/adt"
+
+          echo "=== AIR VERSION ==="
+          adt -version
+
+      - name: Descargar juego
+        run: |
+          curl -L \
+            "https://github.com/danaeeper/flash/releases/download/game-assets/auron_play_jig_trap.swf" \
+            -o auron_play_jig_trap.swf
+
+          echo "=== SWF ==="
+          ls -lh auron_play_jig_trap.swf
+
+      - name: Crear application.xml
+        run: |
+          cat > application.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <application xmlns="http://ns.adobe.com/air/application/51.0">
+
+              <id>com.catita.auronnplayjigtrap</id>
+
+              <versionNumber>1.0.0</versionNumber>
+
+              <filename>Auronn Play Saw Trap</filename>
+
+              <name>Auronn Play Saw Trap</name>
+
+              <initialWindow>
+
+                  <content>auron_play_jig_trap.swf</content>
+
+                  <visible>true</visible>
+
+                  <fullScreen>true</fullScreen>
+
+                  <aspectRatio>landscape</aspectRatio>
+
+                  <autoOrients>false</autoOrients>
+
+                  <renderMode>direct</renderMode>
+
+              </initialWindow>
+
+              <supportedProfiles>
+                  <profile>mobileDevice</profile>
+              </supportedProfiles>
+
+              <iPhone>
+                  <InfoAdditions><![CDATA[
+                      <key>UIRequiresFullScreen</key>
+                      <true/>
+
+                      <key>UISupportedInterfaceOrientations</key>
+                      <array>
+                          <string>UIInterfaceOrientationLandscapeLeft</string>
+                          <string>UIInterfaceOrientationLandscapeRight</string>
+                      </array>
+                  ]]></InfoAdditions>
+              </iPhone>
+
+          </application>
+          EOF
+
+          echo "=== application.xml ==="
+          cat application.xml
+
+      - name: Verificar proyecto
+        run: |
+          echo "=== ARCHIVOS ==="
+          ls -lh
+
+          echo "=== SWF ==="
+          file auron_play_jig_trap.swf
+
+          echo "=== XML ==="
+          xmllint --noout application.xml
+
+      - name: Crear IPA de prueba
+        run: |
+          adt \
+            -package \
+            -target ipa-test \
+            AuronnPlay.ipa \
+            application.xml \
+            auron_play_jig_trap.swf
+
+      - name: Verificar IPA
+        run: |
+          echo "=== IPA CREADA ==="
+          ls -lh AuronnPlay.ipa
+
+          echo "=== CONTENIDO ==="
+          unzip -l AuronnPlay.ipa | head -50
+
+      - name: Guardar IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Auronn-Play-Saw-Trap-IPA
+          path: AuronnPlay.ipa
