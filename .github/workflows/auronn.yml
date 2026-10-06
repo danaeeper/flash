@@ -12,8 +12,17 @@ jobs:
 
     steps:
 
+      # ==========================================
+      # 1. DESCARGAR PROYECTO
+      # ==========================================
+
       - name: Descargar proyecto
         uses: actions/checkout@v4
+
+
+      # ==========================================
+      # 2. INSTALAR JAVA
+      # ==========================================
 
       - name: Instalar Java
         uses: actions/setup-java@v4
@@ -21,11 +30,18 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+
+      # ==========================================
+      # 3. DESCARGAR AIR SDK
+      # ==========================================
+
       - name: Descargar AIR SDK
         run: |
           set -e
 
-          echo "Descargando AIR SDK 51.4.1.1..."
+          echo "======================================"
+          echo "DESCARGANDO AIR SDK 51.4.1.1"
+          echo "======================================"
 
           mkdir -p "$HOME/air"
 
@@ -33,13 +49,20 @@ jobs:
             "https://airsdk.harman.com/api/versions/51.4.1.1/sdks/AIRSDK_MacOS.zip?license=accepted" \
             -o "$HOME/air/AIRSDK_MacOS.zip"
 
+          echo ""
           echo "Descarga terminada."
 
           ls -lh "$HOME/air/AIRSDK_MacOS.zip"
 
-          echo "Verificando ZIP..."
+          echo ""
+          echo "Comprobando ZIP..."
 
           unzip -t "$HOME/air/AIRSDK_MacOS.zip"
+
+
+      # ==========================================
+      # 4. EXTRAER AIR SDK
+      # ==========================================
 
       - name: Extraer AIR SDK
         run: |
@@ -51,9 +74,19 @@ jobs:
             "$HOME/air/AIRSDK_MacOS.zip" \
             -d "$HOME/air/sdk"
 
-          echo "Contenido del SDK:"
+          echo "======================================"
+          echo "BUSCANDO ADT"
+          echo "======================================"
 
-          find "$HOME/air/sdk" -maxdepth 3 -type f -name adt -print
+          find "$HOME/air/sdk" \
+            -type f \
+            -name adt \
+            -print
+
+
+      # ==========================================
+      # 5. CONFIGURAR AIR
+      # ==========================================
 
       - name: Configurar AIR SDK
         run: |
@@ -77,39 +110,70 @@ jobs:
 
           chmod +x "$AIR_HOME/bin/adt"
 
-          echo "AIR_HOME:"
+          echo "======================================"
+          echo "AIR_HOME"
+          echo "======================================"
+
           echo "$AIR_HOME"
 
-          echo "ADT:"
+          echo ""
+          echo "======================================"
+          echo "ADT"
+          echo "======================================"
+
           echo "$ADT"
+
+
+      # ==========================================
+      # 6. COMPROBAR AIR
+      # ==========================================
 
       - name: Comprobar AIR
         run: |
-          echo "=== VERSION AIR ==="
+          echo "======================================"
+          echo "VERSION DE AIR"
+          echo "======================================"
 
           adt -version
 
           echo ""
-          echo "=== ADT ==="
+          echo "======================================"
+          echo "UBICACION DE ADT"
+          echo "======================================"
 
           which adt
+
+
+      # ==========================================
+      # 7. DESCARGAR SWF
+      # ==========================================
 
       - name: Descargar SWF del juego
         run: |
           set -e
 
-          echo "Descargando Auronn Play Saw Trap..."
+          echo "======================================"
+          echo "DESCARGANDO AURONN PLAY SAW TRAP"
+          echo "======================================"
 
           curl -fL \
             "https://github.com/danaeeper/flash/releases/download/game-assets/auron_play_jig_trap.swf" \
             -o auron_play_jig_trap.swf
 
           echo ""
-          echo "=== SWF ==="
+          echo "SWF descargado:"
 
           ls -lh auron_play_jig_trap.swf
 
+          echo ""
+          echo "Tipo de archivo:"
+
           file auron_play_jig_trap.swf
+
+
+      # ==========================================
+      # 8. CREAR APPLICATION.XML
+      # ==========================================
 
       - name: Crear application.xml
         run: |
@@ -122,13 +186,11 @@ jobs:
 
               <versionNumber>1.0.0</versionNumber>
 
-              <filename>Auronn Play Saw Trap</filename>
+              <filename>AuronnPlaySawTrap</filename>
 
               <name>Auronn Play Saw Trap</name>
 
-              <description>
-                  Auronn Play Saw Trap
-              </description>
+              <description>Auronn Play Saw Trap</description>
 
               <initialWindow>
 
@@ -146,9 +208,7 @@ jobs:
 
               </initialWindow>
 
-              <supportedProfiles>
-                  <profile>mobileDevice</profile>
-              </supportedProfiles>
+              <supportedProfiles>mobileDevice</supportedProfiles>
 
               <iPhone>
 
@@ -157,18 +217,6 @@ jobs:
                       <key>UIRequiresFullScreen</key>
                       <true/>
 
-                      <key>UISupportedInterfaceOrientations</key>
-
-                      <array>
-                          <string>
-                              UIInterfaceOrientationLandscapeLeft
-                          </string>
-
-                          <string>
-                              UIInterfaceOrientationLandscapeRight
-                          </string>
-                      </array>
-
                   ]]></InfoAdditions>
 
               </iPhone>
@@ -176,19 +224,42 @@ jobs:
           </application>
           EOF
 
-          echo "=== application.xml ==="
+          echo "======================================"
+          echo "APPLICATION.XML"
+          echo "======================================"
 
           cat application.xml
 
+
+      # ==========================================
+      # 9. VERIFICAR XML
+      # ==========================================
+
       - name: Verificar XML
         run: |
+          set -e
+
+          echo "======================================"
+          echo "VERIFICANDO APPLICATION.XML"
+          echo "======================================"
+
           xmllint --noout application.xml
 
-          echo "XML correcto."
+          echo ""
+          echo "XML CORRECTO."
+
+
+      # ==========================================
+      # 10. CREAR CERTIFICADO DE PRUEBA
+      # ==========================================
 
       - name: Crear certificado de prueba AIR
         run: |
           set -e
+
+          echo "======================================"
+          echo "CREANDO CERTIFICADO"
+          echo "======================================"
 
           adt \
             -certificate \
@@ -198,13 +269,23 @@ jobs:
             auronn-test.p12 \
             auronnpassword
 
+          echo ""
           echo "Certificado creado."
 
           ls -lh auronn-test.p12
 
+
+      # ==========================================
+      # 11. PREPARAR AIRI
+      # ==========================================
+
       - name: Preparar paquete AIRI
         run: |
           set -e
+
+          echo "======================================"
+          echo "PREPARANDO AIRI"
+          echo "======================================"
 
           adt \
             -prepare \
@@ -212,9 +293,34 @@ jobs:
             application.xml \
             auron_play_jig_trap.swf
 
-          echo "=== AIRI ==="
+          echo ""
+          echo "======================================"
+          echo "AIRI GENERADO"
+          echo "======================================"
 
           ls -lh AuronnPlay.airi
+
+
+      # ==========================================
+      # 12. VERIFICAR AIRI
+      # ==========================================
+
+      - name: Verificar AIRI
+        run: |
+          set -e
+
+          echo "======================================"
+          echo "VERIFICANDO AIRI"
+          echo "======================================"
+
+          file AuronnPlay.airi
+
+          unzip -l AuronnPlay.airi | head -60
+
+
+      # ==========================================
+      # 13. GUARDAR AIRI
+      # ==========================================
 
       - name: Guardar AIRI
         uses: actions/upload-artifact@v4
