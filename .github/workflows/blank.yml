@@ -21,6 +21,12 @@ jobs:
           rm -rf FlashBox-iOS
           rm -f FlashBox-iOS.zip
 
+      - name: Configurar iOS 17
+        run: |
+          sed -i '' 's/deploymentTarget: "16.0"/deploymentTarget: "17.0"/g' project.yml
+          echo "Deployment target:"
+          grep deploymentTarget project.yml
+
       - name: Instalar XcodeGen
         run: brew install xcodegen
 
@@ -37,6 +43,8 @@ jobs:
           ls -la
           echo "=== FlashBox ==="
           find FlashBox -maxdepth 2 -type f | head -50
+          echo "=== Deployment Target ==="
+          grep deploymentTarget project.yml
 
       - name: Generar proyecto Xcode
         run: xcodegen generate
