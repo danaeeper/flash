@@ -11,6 +11,7 @@ jobs:
     runs-on: macos-15
 
     steps:
+
       - name: Descargar proyecto
         uses: actions/checkout@v4
 
@@ -20,51 +21,101 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Descargar AIR SDK Manager
+      - name: Descargar AIR SDK
         run: |
-          git clone --depth 1 \
-            https://github.com/airsdk/airsdkmanager.git \
-            airsdkmanager
+          set -e
 
-          echo "=== AIR SDK Manager ==="
-          ls -la airsdkmanager
+          echo "Descargando AIR SDK 51.4.1.1..."
 
-      - name: Instalar AIR SDK
+          mkdir -p "$HOME/air"
+
+          curl -fL \
+            "https://airsdk.harman.com/api/versions/51.4.1.1/sdks/AIRSDK_MacOS.zip?license=accepted" \
+            -o "$HOME/air/AIRSDK_MacOS.zip"
+
+          echo "Descarga terminada."
+
+          ls -lh "$HOME/air/AIRSDK_MacOS.zip"
+
+          echo "Verificando ZIP..."
+
+          unzip -t "$HOME/air/AIRSDK_MacOS.zip"
+
+      - name: Extraer AIR SDK
         run: |
-          echo "Instalando AIR SDK..."
+          set -e
 
-          mkdir -p "$HOME/.airsdk"
+          mkdir -p "$HOME/air/sdk"
 
-          cd airsdkmanager
+          unzip -q \
+            "$HOME/air/AIRSDK_MacOS.zip" \
+            -d "$HOME/air/sdk"
 
-          chmod +x gradlew
+          echo "Contenido del SDK:"
 
-          ./gradlew build
+          find "$HOME/air/sdk" -maxdepth 3 -type f -name adt -print
 
-          echo "=== AIR SDK Manager compilado ==="
-          find . -maxdepth 4 -type f | head -50
-
-      - name: Buscar AIR SDK
+      - name: Configurar AIR SDK
         run: |
-          echo "Buscando ADT..."
+          set -e
 
-          find "$HOME" -type f -name adt 2>/dev/null | head -20 || true
+          ADT=$(find "$HOME/air/sdk" \
+            -type f \
+            -name adt \
+            -print \
+            -quit)
 
-          find "$GITHUB_WORKSPACE" -type f -name adt 2>/dev/null | head -20 || true
+          if [ -z "$ADT" ]; then
+            echo "ERROR: No se encontró ADT."
+            exit 1
+          fi
+
+          AIR_HOME=$(dirname "$(dirname "$ADT")")
+
+          echo "AIR_HOME=$AIR_HOME" >> "$GITHUB_ENV"
+          echo "$AIR_HOME/bin" >> "$GITHUB_PATH"
+
+          chmod +x "$AIR_HOME/bin/adt"
+
+          echo "AIR_HOME:"
+          echo "$AIR_HOME"
+
+          echo "ADT:"
+          echo "$ADT"
+
+      - name: Comprobar AIR
+        run: |
+          echo "=== VERSION AIR ==="
+
+          adt -version
+
+          echo ""
+          echo "=== ADT ==="
+
+          which adt
 
       - name: Descargar SWF del juego
         run: |
-          curl -L \
+          set -e
+
+          echo "Descargando Auronn Play Saw Trap..."
+
+          curl -fL \
             "https://github.com/danaeeper/flash/releases/download/game-assets/auron_play_jig_trap.swf" \
             -o auron_play_jig_trap.swf
 
-          echo "=== SWF descargado ==="
+          echo ""
+          echo "=== SWF ==="
+
           ls -lh auron_play_jig_trap.swf
+
+          file auron_play_jig_trap.swf
 
       - name: Crear application.xml
         run: |
           cat > application.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
+
           <application xmlns="http://ns.adobe.com/air/application/51.0">
 
               <id>com.catita.auronnplayjigtrap</id>
@@ -75,7 +126,9 @@ jobs:
 
               <name>Auronn Play Saw Trap</name>
 
-              <description>Auronn Play Saw Trap</description>
+              <description>
+                  Auronn Play Saw Trap
+              </description>
 
               <initialWindow>
 
@@ -100,14 +153,22 @@ jobs:
               <iPhone>
 
                   <InfoAdditions><![CDATA[
+
                       <key>UIRequiresFullScreen</key>
                       <true/>
 
                       <key>UISupportedInterfaceOrientations</key>
+
                       <array>
-                          <string>UIInterfaceOrientationLandscapeLeft</string>
-                          <string>UIInterfaceOrientationLandscapeRight</string>
+                          <string>
+                              UIInterfaceOrientationLandscapeLeft
+                          </string>
+
+                          <string>
+                              UIInterfaceOrientationLandscapeRight
+                          </string>
                       </array>
+
                   ]]></InfoAdditions>
 
               </iPhone>
@@ -116,87 +177,47 @@ jobs:
           EOF
 
           echo "=== application.xml ==="
+
           cat application.xml
 
-      - name: Verificar archivos
+      - name: Verificar XML
         run: |
-          echo "=============================="
-          echo "ARCHIVOS DEL PROYECTO"
-          echo "=============================="
-
-          ls -lh
-
-          echo ""
-          echo "=============================="
-          echo "SWF"
-          echo "=============================="
-
-          file auron_play_jig_trap.swf
-
-          echo ""
-          echo "=============================="
-          echo "APPLICATION XML"
-          echo "=============================="
-
           xmllint --noout application.xml
 
-      - name: Buscar ADT
-        id: find_adt
+          echo "XML correcto."
+
+      - name: Crear certificado de prueba AIR
         run: |
-          echo "Buscando herramienta ADT..."
+          set -e
 
-          ADT=$(find "$HOME" "$GITHUB_WORKSPACE" \
-            -type f \
-            -name adt \
-            -print \
-            2>/dev/null | head -1)
+          adt \
+            -certificate \
+            -cn AuronnPlay \
+            -validityPeriod 25 \
+            2048-RSA \
+            auronn-test.p12 \
+            auronnpassword
 
-          if [ -z "$ADT" ]; then
-            echo "ERROR: No se encontró ADT."
-            exit 1
-          fi
+          echo "Certificado creado."
 
-          echo "ADT encontrado:"
-          echo "$ADT"
+          ls -lh auronn-test.p12
 
-          chmod +x "$ADT"
-
-          echo "ADT_PATH=$ADT" >> "$GITHUB_ENV"
-
-      - name: Mostrar versión AIR
+      - name: Preparar paquete AIRI
         run: |
-          echo "=== AIR / ADT ==="
+          set -e
 
-          "$ADT_PATH" -version
-
-      - name: Crear IPA de prueba
-        run: |
-          echo "=== CREANDO IPA ==="
-
-          "$ADT_PATH" \
-            -package \
-            -target ipa-test \
-            AuronnPlay.ipa \
+          adt \
+            -prepare \
+            AuronnPlay.airi \
             application.xml \
             auron_play_jig_trap.swf
 
-      - name: Verificar IPA
-        run: |
-          echo "=============================="
-          echo "IPA GENERADA"
-          echo "=============================="
+          echo "=== AIRI ==="
 
-          ls -lh AuronnPlay.ipa
+          ls -lh AuronnPlay.airi
 
-          echo ""
-          echo "=============================="
-          echo "CONTENIDO IPA"
-          echo "=============================="
-
-          unzip -l AuronnPlay.ipa | head -60
-
-      - name: Guardar IPA
+      - name: Guardar AIRI
         uses: actions/upload-artifact@v4
         with:
-          name: Auronn-Play-Saw-Trap-IPA
-          path: AuronnPlay.ipa
+          name: Auronn-Play-Saw-Trap-AIRI
+          path: AuronnPlay.airi
