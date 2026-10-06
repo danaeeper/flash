@@ -14,6 +14,13 @@ jobs:
       - name: Descargar proyecto
         uses: actions/checkout@v4
 
+      - name: Extraer proyecto FlashBox
+        run: |
+          unzip -q FlashBox-iOS.zip
+          cp -R FlashBox-iOS/. .
+          rm -rf FlashBox-iOS
+          rm -f FlashBox-iOS.zip
+
       - name: Instalar XcodeGen
         run: brew install xcodegen
 
@@ -23,6 +30,13 @@ jobs:
           curl -L "https://github.com/ruffle-rs/ruffle/releases/download/nightly-2026-10-05/ruffle-nightly-2026_10_05-web-selfhosted.zip" -o ruffle.zip
           unzip -q ruffle.zip -d FlashBox/Resources/Ruffle
           rm ruffle.zip
+
+      - name: Verificar proyecto
+        run: |
+          echo "=== Archivos principales ==="
+          ls -la
+          echo "=== FlashBox ==="
+          find FlashBox -maxdepth 2 -type f | head -50
 
       - name: Generar proyecto Xcode
         run: xcodegen generate
@@ -43,12 +57,6 @@ jobs:
           mkdir -p Payload
           cp -R build/Release-iphoneos/FlashBox.app Payload/
           zip -r FlashBox.ipa Payload
-
-      - name: Guardar IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: FlashBox-IPA
-          path: FlashBox.ipa
 
       - name: Guardar IPA
         uses: actions/upload-artifact@v4
