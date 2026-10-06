@@ -19,8 +19,10 @@ jobs:
 
       - name: Preparar Ruffle
         run: |
-          chmod +x Scripts/fetch_ruffle.sh
-          ./Scripts/fetch_ruffle.sh
+          mkdir -p FlashBox/Resources/Ruffle
+          curl -L "https://github.com/ruffle-rs/ruffle/releases/download/nightly-2026-10-05/ruffle-nightly-2026_10_05-web-selfhosted.zip" -o ruffle.zip
+          unzip -q ruffle.zip -d FlashBox/Resources/Ruffle
+          rm ruffle.zip
 
       - name: Generar proyecto Xcode
         run: xcodegen generate
@@ -41,6 +43,12 @@ jobs:
           mkdir -p Payload
           cp -R build/Release-iphoneos/FlashBox.app Payload/
           zip -r FlashBox.ipa Payload
+
+      - name: Guardar IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlashBox-IPA
+          path: FlashBox.ipa
 
       - name: Guardar IPA
         uses: actions/upload-artifact@v4
